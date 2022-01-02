@@ -12,7 +12,8 @@
 (define-attribute active-highlight
   (t :foreground "black" :background "cyan"))
 
-(define-key *global-keymap* "C-s" 'search-start)
+(define-key *global-keymap* "C-s" 'search-forward-string)
+(define-key *global-keymap* "C-r" 'search-backward-string)
 
 (defvar *prompt-keymap* (make-keymap :name 'search-prompt))
 (define-key *prompt-keymap* "C-s" 'search-next-matched)
@@ -36,13 +37,16 @@
      ,@body))
 
 (defun call-with-buffer-check (function)
-  (flet ((num-points (buffer)
-           (length (lem-base::buffer-points buffer))))
-    (let* ((before-buffer (current-buffer))
-           (before-num-points (num-points before-buffer)))
-      (unwind-protect (funcall function)
-        (assert (eq before-buffer (current-buffer)))
-        (assert (= before-num-points (num-points (current-buffer))))))))
+  (let* ((before-buffer (current-buffer))
+         (before-points (copy-list (lem-base::buffer-points before-buffer))))
+    (unwind-protect (funcall function)
+      (unless (eq before-buffer (current-buffer))
+        (log:warn "unexpected current-buffer" before-buffer (current-buffer)))
+      (let ((after-points (lem-base::buffer-points (current-buffer))))
+        (unless (length= before-points after-points)
+          (log:warn "leak points"
+                    (set-difference before-points
+                                    after-points)))))))
 
 (defmacro with-buffer-check (() &body body)
   `(call-with-buffer-check (lambda () ,@body)))
@@ -168,24 +172,26 @@
   (move-matched-and-update-highlight (get-context) :forward nil))
 
 (defun prompt-for-search ()
-  (with-buffer-check ()
-    (search-prompt-mode t)
-    (let ((*context* nil))
-      (unwind-protect
-           (handler-bind ((highlight-matches
-                            (lambda (c)
-                              (declare (ignore c))
-                              (update-highlight (get-context))))
-                          (editor-abort
-                            (lambda (c)
-                              (declare (ignore c))
-                              (restore))))
-             (prompt-for-string "Search: "
-                                :gravity :topright))
-        (clear-all-highlight (current-buffer))
-        (search-prompt-mode nil)
-        (delete-context *context*)))))
+  (search-prompt-mode t)
+  (let ((*context* nil))
+    (unwind-protect
+         (handler-bind ((highlight-matches
+                          (lambda (c)
+                            (declare (ignore c))
+                            (update-highlight (get-context))))
+                        (editor-abort
+                          (lambda (c)
+                            (declare (ignore c))
+                            (restore))))
+           (prompt-for-string "Search: " :gravity :topright))
+      (clear-all-highlight (current-buffer))
+      (search-prompt-mode nil)
+      (clear-context))))
 
-(define-command search-start () ()
+(define-command search-forward-string () ()
+  (let ((string (prompt-for-search)))
+    string))
+
+(define-command search-backward-string () ()
   (let ((string (prompt-for-search)))
     string))
