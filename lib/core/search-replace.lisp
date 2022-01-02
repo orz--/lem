@@ -216,25 +216,31 @@
                  :initial-value initial-value))
 
 (defun prompt-for-search (searcher)
-  (search-prompt-mode t)
-  (let ((*context* nil))
-    (unwind-protect
-         (handler-bind ((highlight-matches
-                          (lambda (c)
-                            (declare (ignore c))
-                            (update-highlight
-                             (get-or-make-context (searcher-search-forward searcher)
-                                                  (searcher-search-backward searcher)))))
-                        (editor-abort
-                          (lambda (c)
-                            (declare (ignore c))
-                            (restore-cursor))))
-           (prompt-for-string (searcher-prompt searcher)
-                              :initial-value (searcher-initial-value searcher)
-                              :gravity :topright))
-      (clear-all-highlight (current-buffer))
-      (search-prompt-mode nil)
-      (clear-context))))
+  (flet ((update ()
+           (update-highlight
+            (get-or-make-context (searcher-search-forward searcher)
+                                 (searcher-search-backward searcher)))))
+    (when (searcher-initial-value searcher)
+      ;; dirty hack:
+      ;; If there is an initial value, update it at the beginning of the first command loop.
+      (send-event #'update))
+    (let ((*context* nil))
+      (search-prompt-mode t)
+      (unwind-protect
+           (handler-bind ((highlight-matches
+                            (lambda (c)
+                              (declare (ignore c))
+                              (update)))
+                          (editor-abort
+                            (lambda (c)
+                              (declare (ignore c))
+                              (restore-cursor))))
+             (prompt-for-string (searcher-prompt searcher)
+                                :initial-value (searcher-initial-value searcher)
+                                :gravity :topright))
+        (clear-all-highlight (current-buffer))
+        (search-prompt-mode nil)
+        (clear-context)))))
 
 (define-command search-string () ()
   (prompt-for-search (string-searcher)))
