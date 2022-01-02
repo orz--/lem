@@ -252,5 +252,4 @@
   (prompt-for-search (symbol-searcher)))
 
 (define-command search-symbol-at-point () ()
-  (let ((symbol-string (symbol-string-at-point (current-point))))
-    (prompt-for-search (symbol-searcher :initial-value symbol-string))))
+  (prompt-for-search (symbol-searcher :initial-value (symbol-string-at-point (current-point)))))
