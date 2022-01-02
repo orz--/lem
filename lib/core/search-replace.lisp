@@ -120,7 +120,7 @@
   (mapc #'delete-overlay (highlight-overlays buffer))
   (setf (highlight-overlays buffer) '()))
 
-(defun search-next-match (context point &key limit (forward t))
+(defun search-next-match (context point &key limit (forward t) (move t))
   (multiple-value-bind (search-forward search-backward)
       (if forward
           (values (context-search-forward context)
@@ -137,11 +137,11 @@
                           (copy-point matched-end :temporary)
                           (context-search-string context))))
       (assert (length= 3 (remove-duplicates (list matched-start matched-end point))))
-      (move-point point matched-end)
       (let ((matched (if (point< matched-start matched-end)
                          (make-matched :start matched-start :end matched-end)
                          (make-matched :end matched-start :start matched-end))))
         (setf (context-last-matched context) matched)
+        (when move (move-point point matched-end))
         matched))))
 
 (defun update-highlight (context)
@@ -161,9 +161,25 @@
       (move-point (context-cursor context)
                   (matched-start matched)))))
 
+(defun move-to-forward-matched (context)
+  (let ((matched
+          (search-next-match context (context-cursor context)
+                             :forward t :move nil)))
+    (loop :repeat (if (point<= (matched-start matched)
+                               (context-cursor context))
+                      2
+                      1)
+          :do (search-next-match context (context-cursor context)
+                                 :forward t :move t))))
+
+(defun move-to-backward-matched (context)
+  (search-next-match context (context-cursor context)
+                     :forward nil :move t))
+
 (defun move-matched-and-update-highlight (context &key (forward t))
-  (loop :repeat (if forward 2 1)
-        :do (search-next-match context (context-cursor context) :forward forward))
+  (if forward
+      (move-to-forward-matched context)
+      (move-to-backward-matched context))
   (adjust-current-matched context)
   (update-highlight context)
   (window-see (context-target-window context)))
