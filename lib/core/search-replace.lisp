@@ -88,7 +88,7 @@
   (when *context*
     (delete-context *context*)))
 
-(defun restore ()
+(defun restore-cursor ()
   (when *context*
     (let ((point (context-saved-point *context*)))
       (move-point (buffer-point (point-buffer point)) point))))
@@ -207,7 +207,7 @@
                         (editor-abort
                           (lambda (c)
                             (declare (ignore c))
-                            (restore))))
+                            (restore-cursor))))
            (prompt-for-string prompt :gravity :topright))
       (clear-all-highlight (current-buffer))
       (search-prompt-mode nil)
