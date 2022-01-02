@@ -12,8 +12,11 @@
 (define-attribute active-highlight
   (t :foreground "black" :background "cyan"))
 
-(define-key *global-keymap* "C-s" 'search-forward-string)
-(define-key *global-keymap* "C-r" 'search-backward-string)
+(define-key *global-keymap* "C-s" 'search-string)
+(define-key *global-keymap* "C-r" 'search-string)
+
+(define-key *global-keymap* "C-M-s" 'search-regexp)
+(define-key *global-keymap* "C-M-r" 'search-regexp)
 
 (defvar *prompt-keymap* (make-keymap :name 'search-prompt))
 (define-key *prompt-keymap* "C-s" 'search-next-matched)
@@ -192,28 +195,26 @@
   (when *context*
     (move-matched-and-update-highlight *context* :forward nil)))
 
-(defun prompt-for-search ()
+(defun prompt-for-search (prompt search-forward search-backward)
   (search-prompt-mode t)
   (let ((*context* nil))
     (unwind-protect
          (handler-bind ((highlight-matches
                           (lambda (c)
                             (declare (ignore c))
-                            (update-highlight (get-or-make-context #'search-forward
-                                                                   #'search-backward))))
+                            (update-highlight (get-or-make-context search-forward
+                                                                   search-backward))))
                         (editor-abort
                           (lambda (c)
                             (declare (ignore c))
                             (restore))))
-           (prompt-for-string "Search: " :gravity :topright))
+           (prompt-for-string prompt :gravity :topright))
       (clear-all-highlight (current-buffer))
       (search-prompt-mode nil)
       (clear-context))))
 
-(define-command search-forward-string () ()
-  (let ((string (prompt-for-search)))
-    string))
+(define-command search-string () ()
+  (prompt-for-search "Search: " #'search-forward #'search-backward))
 
-(define-command search-backward-string () ()
-  (let ((string (prompt-for-search)))
-    string))
+(define-command search-regexp () ()
+  (prompt-for-search "Regex Search: " #'search-forward-regexp #'search-backward-regexp))
