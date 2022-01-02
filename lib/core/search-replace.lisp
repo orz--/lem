@@ -14,9 +14,9 @@
 
 (define-key *global-keymap* "C-s" 'search-string)
 (define-key *global-keymap* "C-r" 'search-string)
-
 (define-key *global-keymap* "C-M-s" 'search-regexp)
 (define-key *global-keymap* "C-M-r" 'search-regexp)
+(define-key *global-keymap* "M-s _" 'search-symbol)
 
 (defvar *prompt-keymap* (make-keymap :name 'search-prompt))
 (define-key *prompt-keymap* "C-s" 'search-next-matched)
@@ -217,4 +217,7 @@
   (prompt-for-search "Search: " #'search-forward #'search-backward))
 
 (define-command search-regexp () ()
-  (prompt-for-search "Regex Search: " #'search-forward-regexp #'search-backward-regexp))
+  (prompt-for-search "Search(Regexp): " #'search-forward-regexp #'search-backward-regexp))
+
+(define-command search-symbol () ()
+  (prompt-for-search "Search(Symbol): " #'search-forward-symbol #'search-backward-symbol))
