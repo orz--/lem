@@ -165,9 +165,9 @@
                   (matched-start matched)))))
 
 (defun move-to-forward-matched (context)
-  (let ((matched
-          (search-next-match context (context-cursor context)
-                             :forward t :move nil)))
+  (when-let ((matched
+              (search-next-match context (context-cursor context)
+                                 :forward t :move nil)))
     (loop :repeat (if (point<= (matched-start matched)
                                (context-cursor context))
                       2
