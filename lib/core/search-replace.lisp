@@ -173,11 +173,11 @@
       (search-next-match context cursor :forward t :move t))))
 
 (defun move-to-backward-matched (context)
+  (adjust-current-matched context)
   (search-next-match context (context-cursor context)
                      :forward nil :move t))
 
 (defun move-matched-and-update-highlight (context &key (forward t))
-  (adjust-current-matched context)
   (when (if forward
             (move-to-forward-matched context)
             (move-to-backward-matched context))
