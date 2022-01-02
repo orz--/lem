@@ -90,12 +90,18 @@
     (let ((point (context-saved-point *context*)))
       (move-point (buffer-point (point-buffer point)) point))))
 
-(defun get-context ()
+(defun get-or-make-context (search-forward search-backward)
   (or *context*
-      (setf *context* (make-current-context #'search-forward #'search-backward))))
+      (setf *context* (make-current-context search-forward search-backward))))
 
 (defun context-search-string (context)
   (get-prompt-input-string (context-prompt-window context)))
+
+(defun highlight-overlays (buffer)
+  (buffer-value buffer 'highlight-overlays))
+
+(defun (setf highlight-overlays) (overlays buffer)
+  (setf (buffer-value buffer 'highlight-overlays) overlays))
 
 (defun create-matched-overlay (context matched)
   (let ((overlay
@@ -107,46 +113,43 @@
                             'active-highlight
                             'highlight)))
         (buffer (point-buffer (context-cursor context))))
-    (push overlay (buffer-value buffer 'highlight-overlays))
+    (push overlay (highlight-overlays buffer))
     overlay))
 
 (defun clear-all-highlight (buffer)
-  (mapc #'delete-overlay (buffer-value buffer 'highlight-overlays))
-  (setf (buffer-value buffer 'highlight-overlays) '()))
+  (mapc #'delete-overlay (highlight-overlays buffer))
+  (setf (highlight-overlays buffer) '()))
 
-(defun next-match (context point &key limit (forward t))
+(defun search-next-match (context point &key limit (forward t))
   (multiple-value-bind (search-forward search-backward)
       (if forward
           (values (context-search-forward context)
                   (context-search-backward context))
           (values (context-search-backward context)
                   (context-search-forward context)))
-    (when-let* ((next-point
+    (when-let* ((matched-end
                  (funcall search-forward
-                          point
+                          (copy-point point :temporary)
                           (context-search-string context)
                           limit))
-                (previous-point
+                (matched-start
                  (funcall search-backward
-                          (copy-point next-point :temporary)
+                          (copy-point matched-end :temporary)
                           (context-search-string context))))
-      (let ((matched-start previous-point)
-            (matched-end (copy-point next-point :temporary)))
-        (assert (not (or (eq matched-start matched-end)
-                         (eq matched-start point)
-                         (eq matched-end point))))
-        (let ((matched (if (point< matched-start matched-end)
-                           (make-matched :start matched-start :end matched-end)
-                           (make-matched :end matched-start :start matched-end))))
-          (setf (context-last-matched context) matched)
-          matched)))))
+      (assert (length= 3 (remove-duplicates (list matched-start matched-end point))))
+      (move-point point matched-end)
+      (let ((matched (if (point< matched-start matched-end)
+                         (make-matched :start matched-start :end matched-end)
+                         (make-matched :end matched-start :start matched-end))))
+        (setf (context-last-matched context) matched)
+        matched))))
 
 (defun update-highlight (context)
   (clear-all-highlight (window-buffer (context-target-window context)))
   (unless (string= "" (context-search-string context))
     (with-window-region (start-point end-point (context-target-window context))
       (with-point ((point start-point))
-        (loop :for matched := (next-match context point :limit end-point)
+        (loop :for matched := (search-next-match context point :limit end-point)
               :while matched
               :do (create-matched-overlay context matched))))))
 
@@ -160,16 +163,18 @@
 
 (defun move-matched-and-update-highlight (context &key (forward t))
   (loop :repeat (if forward 2 1)
-        :do (next-match context (context-cursor context) :forward forward))
+        :do (search-next-match context (context-cursor context) :forward forward))
   (adjust-current-matched context)
   (update-highlight context)
   (window-see (context-target-window context)))
 
 (define-command search-next-matched () ()
-  (move-matched-and-update-highlight (get-context) :forward t))
+  (when *context*
+    (move-matched-and-update-highlight *context* :forward t)))
 
 (define-command search-previous-matched () ()
-  (move-matched-and-update-highlight (get-context) :forward nil))
+  (when *context*
+    (move-matched-and-update-highlight *context* :forward nil)))
 
 (defun prompt-for-search ()
   (search-prompt-mode t)
@@ -178,7 +183,8 @@
          (handler-bind ((highlight-matches
                           (lambda (c)
                             (declare (ignore c))
-                            (update-highlight (get-context))))
+                            (update-highlight (get-or-make-context #'search-forward
+                                                                   #'search-backward))))
                         (editor-abort
                           (lambda (c)
                             (declare (ignore c))
