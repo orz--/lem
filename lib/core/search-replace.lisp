@@ -17,6 +17,7 @@
 (define-key *global-keymap* "C-M-s" 'search-regexp)
 (define-key *global-keymap* "C-M-r" 'search-regexp)
 (define-key *global-keymap* "M-s _" 'search-symbol)
+(define-key *global-keymap* "M-s ." 'search-symbol-at-point)
 
 (defvar *prompt-keymap* (make-keymap :name 'search-prompt))
 (define-key *prompt-keymap* "C-s" 'search-next-matched)
@@ -165,27 +166,24 @@
                   (matched-start matched)))))
 
 (defun move-to-forward-matched (context)
-  (when-let ((matched
-              (search-next-match context (context-cursor context)
-                                 :forward t :move nil)))
-    (loop :repeat (if (point<= (matched-start matched)
-                               (context-cursor context))
-                      2
-                      1)
-          :do (search-next-match context (context-cursor context)
-                                 :forward t :move t))))
+  (let ((cursor (context-cursor context)))
+    (when-let ((matched (search-next-match context cursor :forward t :move nil)))
+      (when (point<= (matched-start matched) cursor)
+        (move-point cursor (matched-end matched)))
+      (search-next-match context cursor :forward t :move t))))
 
 (defun move-to-backward-matched (context)
   (search-next-match context (context-cursor context)
                      :forward nil :move t))
 
 (defun move-matched-and-update-highlight (context &key (forward t))
-  (if forward
-      (move-to-forward-matched context)
-      (move-to-backward-matched context))
   (adjust-current-matched context)
-  (update-highlight context)
-  (window-see (context-target-window context)))
+  (when (if forward
+            (move-to-forward-matched context)
+            (move-to-backward-matched context))
+    (adjust-current-matched context)
+    (update-highlight context)
+    (window-see (context-target-window context))))
 
 (define-command search-next-matched () ()
   (when *context*
@@ -195,29 +193,58 @@
   (when *context*
     (move-matched-and-update-highlight *context* :forward nil)))
 
-(defun prompt-for-search (prompt search-forward search-backward)
+(defstruct searcher
+  prompt
+  search-forward
+  search-backward
+  initial-value)
+
+(defun string-searcher ()
+  (make-searcher :prompt "Search: "
+                 :search-forward #'search-forward
+                 :search-backward #'search-backward))
+
+(defun regexp-searcher ()
+  (make-searcher :prompt "Search(regexp): "
+                 :search-forward #'search-forward-regexp
+                 :search-backward #'search-backward-regexp))
+
+(defun symbol-searcher (&key initial-value)
+  (make-searcher :prompt "Search(symbol): "
+                 :search-forward #'search-forward-symbol
+                 :search-backward #'search-backward-symbol
+                 :initial-value initial-value))
+
+(defun prompt-for-search (searcher)
   (search-prompt-mode t)
   (let ((*context* nil))
     (unwind-protect
          (handler-bind ((highlight-matches
                           (lambda (c)
                             (declare (ignore c))
-                            (update-highlight (get-or-make-context search-forward
-                                                                   search-backward))))
+                            (update-highlight
+                             (get-or-make-context (searcher-search-forward searcher)
+                                                  (searcher-search-backward searcher)))))
                         (editor-abort
                           (lambda (c)
                             (declare (ignore c))
                             (restore-cursor))))
-           (prompt-for-string prompt :gravity :topright))
+           (prompt-for-string (searcher-prompt searcher)
+                              :initial-value (searcher-initial-value searcher)
+                              :gravity :topright))
       (clear-all-highlight (current-buffer))
       (search-prompt-mode nil)
       (clear-context))))
 
 (define-command search-string () ()
-  (prompt-for-search "Search: " #'search-forward #'search-backward))
+  (prompt-for-search (string-searcher)))
 
 (define-command search-regexp () ()
-  (prompt-for-search "Search(Regexp): " #'search-forward-regexp #'search-backward-regexp))
+  (prompt-for-search (regexp-searcher)))
 
 (define-command search-symbol () ()
-  (prompt-for-search "Search(Symbol): " #'search-forward-symbol #'search-backward-symbol))
+  (prompt-for-search (symbol-searcher)))
+
+(define-command search-symbol-at-point () ()
+  (let ((symbol-string (symbol-string-at-point (current-point))))
+    (prompt-for-search (symbol-searcher :initial-value symbol-string))))
