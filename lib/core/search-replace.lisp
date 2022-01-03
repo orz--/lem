@@ -31,9 +31,8 @@
 (defun compute-window-region (window)
   (let ((start (window-view-point window)))
     (list start
-          (or (line-offset (copy-point start :temporary)
-                           (window-height window))
-              (buffer-end-point (window-buffer window))))))
+          (line-offset (copy-point start :temporary)
+                       (window-height window)))))
 
 (defmacro with-window-region ((start-point end-point window) &body body)
   `(destructuring-bind (,start-point ,end-point)
