@@ -22,6 +22,7 @@
 (defvar *prompt-keymap* (make-keymap :name 'search-prompt))
 (define-key *prompt-keymap* "C-s" 'search-next-matched)
 (define-key *prompt-keymap* "C-r" 'search-previous-matched)
+(define-key *prompt-keymap* "F2" 'search-replace)
 
 (define-minor-mode search-prompt-mode
     (:name "Search"
@@ -252,3 +253,6 @@
 
 (define-command search-symbol-at-point () ()
   (prompt-for-search (symbol-searcher :initial-value (symbol-string-at-point (current-point)))))
+
+(define-command search-replace () ()
+  (log:info "search-replace"))
