@@ -5,9 +5,10 @@
                "lem-fake-interface"
                "lem-lisp-mode"
                "cl-ansi-text"
-               "trivial-package-local-nicknames")
+               "trivial-package-local-nicknames"
+               "rove")
   :pathname "tests"
-  :components ((:file "deftest")
+  :components (;(:file "deftest")
                (:file "utilities")
                (:module "lsp-utils"
                 :components ((:file "json")
@@ -26,4 +27,6 @@
                (:file "self-insert-command")
                (:file "main"))
   :perform (test-op (o c)
+                    (symbol-call :rove :run c)
+                    #+(or)
                     (symbol-call :lem-tests :run-all-tests)))
