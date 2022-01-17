@@ -39,6 +39,7 @@
         '(#x1f973 #x1f976) '(#x1f97a #x1f97a) '(#x1f97c #x1f9a2) '(#x1f9b0 #x1f9b9)
         '(#x1f9c0 #x1f9c2) '(#x1f9d0 #x1f9ff) '(#x20000 #x2fffd) '(#x30000 #x3fffd)))
 
+#+(or)
 (deftest control-char
   (loop :for code :from 0 :below 128
         :for char := (code-char code)
@@ -333,6 +334,7 @@
   (ok (equal (control-char #\UE0FE) "\\254"))
   (ok (equal (control-char #\UE0FF) "\\255")))
 
+#+(or)
 (deftest wide-char-p
   (ok (loop :for code :from 0 :below 256
             :for char := (code-char code)
@@ -343,6 +345,7 @@
   (ok (not (wide-char-p (code-char #x1f336))))
   (ok (not (wide-char-p (code-char #x1f4fd)))))
 
+#+(or)
 (deftest char-width
   (testing "alphabet"
     (ok (eql 1 (char-width #\a 0)))
@@ -368,6 +371,7 @@
                     (char= char #\tab))
           (ok (eql 2 (char-width (code-char code) 0))))))))
 
+#+(or)
 (deftest string-width
   (ok (eql 1 (string-width "a")))
   (ok (eql 2 (string-width "ab")))
@@ -392,6 +396,7 @@
   (ok (eql 3 (string-width (format nil "~Aaあ" #\tab) :start 1)))
   (ok (eql 6 (string-width (format nil "~Aaあ" #\tab) :tab-size 5 :start 0 :end 2))))
 
+#+(or)
 (deftest wide-index
   (ok (eql 1 (wide-index "abc" 1)))
   (ok (eql 2 (wide-index "abc" 2)))
