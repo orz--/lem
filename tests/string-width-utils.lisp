@@ -39,7 +39,6 @@
         '(#x1f973 #x1f976) '(#x1f97a #x1f97a) '(#x1f97c #x1f9a2) '(#x1f9b0 #x1f9b9)
         '(#x1f9c0 #x1f9c2) '(#x1f9d0 #x1f9ff) '(#x20000 #x2fffd) '(#x30000 #x3fffd)))
 
-#+(or)
 (deftest control-char
   (loop :for code :from 0 :below 128
         :for char := (code-char code)
