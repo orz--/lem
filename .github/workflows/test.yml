@@ -25,7 +25,8 @@ jobs:
         ros install cxxxr/sblint
         ros install fukamachi/rove/reduce-macro-expansion
         export PATH=$HOME/.roswell/bin:$PATH
-        lem-test
+        ros -s lem-tests
+
         sblint lib/base/lem-base.asd
         sblint lib/core/lem-core.asd
         sblint lib/lisp-syntax/lem-lisp-syntax.asd
